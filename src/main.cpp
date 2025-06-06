@@ -38,6 +38,14 @@
 #include "target_specific.h"
 #include <memory>
 #include <utility>
+#ifdef HELTEC_V3
+#include <MFRC522.h>
+#define RC522_SCK 25
+#define RC522_MOSI 32
+#define RC522_MISO 33
+#define RC522_SS 26
+#define RC522_RST 27
+#endif
 
 #ifdef ARCH_ESP32
 #include "freertosinc.h"
@@ -127,6 +135,7 @@ extern void tftSetup(void);
 #include "mesh/udp/UdpMulticastHandler.h"
 UdpMulticastHandler *udpHandler = nullptr;
 #endif
+#include "modules/TextMessageModule.h"
 
 #if defined(TCXO_OPTIONAL)
 float tcxoVoltage = SX126X_DIO3_TCXO_VOLTAGE; // if TCXO is optional, put this here so it can be changed further down.
@@ -139,6 +148,42 @@ void setupNicheGraphics();
 
 #if defined(HW_SPI1_DEVICE) && defined(ARCH_ESP32)
 SPIClass SPI1(HSPI);
+#endif
+#ifdef HELTEC_V3
+SPIClass rfidSPI(HSPI);
+static MFRC522 rfid(RC522_SS, RC522_RST);
+static String lastRfidUid = "";
+static uint32_t lastRfidTime = 0;
+static float lastAckSnr = 0;
+static int32_t lastAckRssi = 0;
+
+struct AckHandler {
+    int onAck(const meshtastic_MeshPacket *mp)
+    {
+        if (mp->decoded.portnum == meshtastic_PortNum_TEXT_MESSAGE_APP) {
+            String msg;
+            for (uint8_t i = 0; i < mp->decoded.payload.size; i++)
+                msg += (char)mp->decoded.payload.bytes[i];
+            lastAckSnr = mp->rx_snr;
+            lastAckRssi = mp->rx_rssi;
+            String prefix = String(owner.short_name) + ":";
+            if (msg.startsWith(prefix)) {
+                if (screen)
+                    screen->startAlert(msg.c_str());
+                for (int i = 0; i < 5; i++) {
+                    ledForceOn.set(true);
+                    delay(50);
+                    ledForceOn.set(false);
+                    delay(50);
+                }
+                screen->endAlert();
+            }
+        }
+        return 0;
+    }
+};
+static AckHandler ackHandler;
+static CallbackObserver<AckHandler, const meshtastic_MeshPacket *> ackObserver(&ackHandler, &AckHandler::onAck);
 #endif
 
 using namespace concurrency;
@@ -476,6 +521,10 @@ void setup()
 #if defined(ELECROW_ThinkNode_M1) || defined(ELECROW_ThinkNode_M2)
     // The ThinkNodes have their own blink logic
     ledPeriodic = new Periodic("Blink", elecrowLedBlinker);
+#elif defined(HELTEC_V3)
+    // Disable heartbeat on Heltec V3, we flash manually
+    ledPeriodic = nullptr;
+    digitalWrite(LED_PIN, HIGH ^ LED_STATE_ON);
 #else
     ledPeriodic = new Periodic("Blink", ledBlinker);
 #endif
@@ -849,6 +898,10 @@ void setup()
     LOG_DEBUG("SPI.begin(SCK=%d, MISO=%d, MOSI=%d, NSS=%d)", LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
     SPI.setFrequency(4000000);
 #endif
+#ifdef HELTEC_V3
+    rfidSPI.begin(RC522_SCK, RC522_MISO, RC522_MOSI, RC522_SS);
+    rfid.PCD_Init();
+#endif
 #endif
 
     // Initialize the screen first so we can show the logo while we start up everything else.
@@ -920,6 +973,9 @@ void setup()
 
     // Now that the mesh service is created, create any modules
     setupModules();
+#ifdef HELTEC_V3
+    ackObserver.observe(textMessageModule);
+#endif
 
 #ifdef MESHTASTIC_INCLUDE_NICHE_GRAPHICS
     // After modules are setup, so we can observe modules
@@ -1394,6 +1450,44 @@ void loop()
 #endif
 
     service->loop();
+#ifdef HELTEC_V3
+    if (millis() - lastRfidTime > 500) {
+        lastRfidTime = millis();
+        if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
+            String uid = "";
+            for (byte i = 0; i < rfid.uid.size; i++) {
+                if (i) uid += ":";
+                uid += String(rfid.uid.uidByte[i], HEX);
+            }
+            uid.toUpperCase();
+            if (uid != lastRfidUid) {
+                lastRfidUid = uid;
+                if (screen)
+                    screen->startAlert("SCAN SUCCESS");
+                for (int i = 0; i < 3; i++) {
+                    ledForceOn.set(true);
+                    delay(50);
+                    ledForceOn.set(false);
+                    delay(50);
+                }
+
+                float battV = powerStatus->getBatteryVoltageMv() / 1000.0f;
+                int battP = powerStatus->getBatteryChargePercent();
+                String msg = String(owner.short_name) + ":" + uid + ":" + String(battV, 2) + ":" + String(battP) + ":" +
+                              String(lastAckSnr, 1) + ":" + String(lastAckRssi);
+
+                meshtastic_MeshPacket *p = router->allocForSending();
+                p->decoded.portnum = meshtastic_PortNum_TEXT_MESSAGE_APP;
+                p->decoded.payload.size = msg.length();
+                memcpy(p->decoded.payload.bytes, msg.c_str(), msg.length());
+                service->sendToMesh(p, RX_SRC_LOCAL, true);
+                screen->endAlert();
+            }
+            rfid.PICC_HaltA();
+            rfid.PCD_StopCrypto1();
+        }
+    }
+#endif
 
     long delayMsec = mainController.runOrDelay();
 
