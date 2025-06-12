@@ -34,6 +34,14 @@ Meshtastic enables text messaging, location sharing, and telemetry over a decent
 
 Join our community and help improve Meshtastic! 🚀
 
+### Build Notes
+
+When overriding the SPI bus for the MFRC522 RFID reader by defining
+`MFRC522_SPI` in your build flags (for example `-DMFRC522_SPI=rfidSPI`),
+ensure an SPI instance with that name is defined in your project. An
+`extern` declaration for this object now lives in `MFRC522.h`, so only the
+definition (e.g. `SPIClass rfidSPI(HSPI);`) is required.
+
 ## Stats
 
 ![Alt](https://repobeats.axiom.co/api/embed/8025e56c482ec63541593cc5bd322c19d5c0bdcf.svg "Repobeats analytics image")
