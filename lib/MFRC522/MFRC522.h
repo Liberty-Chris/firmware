@@ -20,6 +20,7 @@
 #ifndef MFRC522_SPI
 #define MFRC522_SPI SPI
 #endif
+extern SPIClass MFRC522_SPI;
 
 
 #ifndef MFRC522_SPICLOCK
