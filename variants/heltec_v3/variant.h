@@ -43,17 +43,17 @@
 
 // MFRC522 RFID reader pins
 #ifndef RC522_SCK_PIN
-#define RC522_SCK_PIN 25
+#define RC522_SCK_PIN 7
 #endif
 #ifndef RC522_MOSI_PIN
-#define RC522_MOSI_PIN 32
+#define RC522_MOSI_PIN 6
 #endif
 #ifndef RC522_MISO_PIN
-#define RC522_MISO_PIN 33
+#define RC522_MISO_PIN 5
 #endif
 #ifndef RC522_SS_PIN
 #define RC522_SS_PIN 26
 #endif
 #ifndef RC522_RST_PIN
-#define RC522_RST_PIN 27
+#define RC522_RST_PIN 4
 #endif
