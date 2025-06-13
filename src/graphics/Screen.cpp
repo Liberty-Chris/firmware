@@ -443,7 +443,13 @@ static void drawCriticalFaultFrame(OLEDDisplay *display, OLEDDisplayUiState *sta
 // Ignore messages originating from phone (from the current node 0x0) unless range test or store and forward module are enabled
 static bool shouldDrawMessage(const meshtastic_MeshPacket *packet)
 {
-    return packet->from != 0 && !moduleConfig.store_forward.enabled;
+    // Ignore messages originating from a phone unless Range Test or
+    // Store-and-Forward modules are enabled.
+    if (packet->from == 0 && !moduleConfig.range_test.enabled &&
+        !moduleConfig.store_forward.enabled) {
+        return false;
+    }
+    return true;
 }
 
 // Draw power bars or a charging indicator on an image of a battery, determined by battery charge voltage or percentage.
