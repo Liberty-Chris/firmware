@@ -166,19 +166,10 @@ static void drawIconScreen(const char *upperMsg, OLEDDisplay *display, OLEDDispl
     display->drawXbm(x + (SCREEN_WIDTH - icon_width) / 2,
                      y + (SCREEN_HEIGHT - icon_height) / 2, icon_width, icon_height, icon_bits);
 
+    (void)upperMsg;
     display->setTextAlignment(TEXT_ALIGN_LEFT);
     display->setFont(FONT_SMALL);
 
-    // Draw region in upper left
-    if (upperMsg)
-        display->drawString(x + 0, y + 0, upperMsg);
-
-    // Draw version and short name in upper right
-    char buf[25];
-    snprintf(buf, sizeof(buf), "%s\n%s", xstr(APP_VERSION_SHORT), haveGlyphs(owner.short_name) ? owner.short_name : "");
-
-    display->setTextAlignment(TEXT_ALIGN_RIGHT);
-    display->drawString(x + SCREEN_WIDTH, y + 0, buf);
     screen->forceDisplay();
 
     display->setTextAlignment(TEXT_ALIGN_LEFT); // Restore left align, just to be kind to any other unsuspecting code
@@ -191,17 +182,10 @@ static void drawBitmapScreen(const char *upperMsg, OLEDDisplay *display, OLEDDis
     display->drawXbm(x + (SCREEN_WIDTH - width) / 2,
                      y + (SCREEN_HEIGHT - height) / 2, width, height, bits);
 
+    (void)upperMsg;
     display->setTextAlignment(TEXT_ALIGN_LEFT);
     display->setFont(FONT_SMALL);
 
-    if (upperMsg)
-        display->drawString(x + 0, y + 0, upperMsg);
-
-    char buf[25];
-    snprintf(buf, sizeof(buf), "%s\n%s", xstr(APP_VERSION_SHORT), haveGlyphs(owner.short_name) ? owner.short_name : "");
-
-    display->setTextAlignment(TEXT_ALIGN_RIGHT);
-    display->drawString(x + SCREEN_WIDTH, y + 0, buf);
     screen->forceDisplay();
 
     display->setTextAlignment(TEXT_ALIGN_LEFT);
@@ -209,20 +193,17 @@ static void drawBitmapScreen(const char *upperMsg, OLEDDisplay *display, OLEDDis
 
 static void drawDripdropzLogo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
 {
-    const char *region = myRegion ? myRegion->name : NULL;
-    drawBitmapScreen(region, display, state, x, y, DRIPDROPZ_LOGO_WIDTH, DRIPDROPZ_LOGO_HEIGHT, dripdropz_icon_128x28_bits);
+    drawBitmapScreen(nullptr, display, state, x, y, DRIPDROPZ_LOGO_WIDTH, DRIPDROPZ_LOGO_HEIGHT, dripdropz_icon_128x28_bits);
 }
 
 static void drawIogLogo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
 {
-    const char *region = myRegion ? myRegion->name : NULL;
-    drawBitmapScreen(region, display, state, x, y, IOG_LOGO_WIDTH, IOG_LOGO_HEIGHT, iog_icon_128x28_bits);
+    drawBitmapScreen(nullptr, display, state, x, y, IOG_LOGO_WIDTH, IOG_LOGO_HEIGHT, iog_icon_128x28_bits);
 }
 
 static void drawHydraLogo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
 {
-    const char *region = myRegion ? myRegion->name : NULL;
-    drawBitmapScreen(region, display, state, x, y, HYDRA_LOGO_WIDTH, HYDRA_LOGO_HEIGHT, hydra_icon_128x28_bits);
+    drawBitmapScreen(nullptr, display, state, x, y, HYDRA_LOGO_WIDTH, HYDRA_LOGO_HEIGHT, hydra_icon_128x28_bits);
 }
 
 static FrameCallback bootFrames[BOOT_FRAME_COUNT] = {drawDripdropzLogo, drawIogLogo, drawHydraLogo};
