@@ -167,8 +167,7 @@ struct AckHandler {
                     ledForceOn.set(false);
                     delay(50);
                 }
-                delay(5000);
-                screen->endAlert();
+                // Alerts automatically dismiss after `logo_timeout` in Screen.cpp
             }
         }
         return 0;
