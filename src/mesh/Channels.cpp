@@ -9,6 +9,8 @@
 
 #include <assert.h>
 
+static_assert(MAX_NUM_CHANNELS >= 3, "MAX_NUM_CHANNELS must be at least 3");
+
 #if !MESHTASTIC_EXCLUDE_MQTT
 #include "mqtt/MQTT.h"
 #endif
@@ -80,7 +82,7 @@ void Channels::initDefaultLoraConfig()
 {
     meshtastic_Config_LoRaConfig &loraConfig = config.lora;
 
-    loraConfig.modem_preset = meshtastic_Config_LoRaConfig_ModemPreset_LONG_FAST; // Default to Long Range & Fast
+    loraConfig.modem_preset = meshtastic_Config_LoRaConfig_ModemPreset_MEDIUM_FAST; // Default to Medium Range & Fast
     loraConfig.use_preset = true;
     loraConfig.tx_power = 0; // default
     loraConfig.channel_num = 0;
@@ -136,12 +138,14 @@ void Channels::initDefaultChannel(ChannelIndex chIndex)
     strncpy(channelSettings.name, "", sizeof(channelSettings.name));
     channelSettings.module_settings.position_precision = 13; // default to sending location on the primary channel
     channelSettings.has_module_settings = true;
+    channelSettings.channel_num = 0;
 
     ch.has_settings = true;
     ch.role = chIndex == 0 ? meshtastic_Channel_Role_PRIMARY : meshtastic_Channel_Role_SECONDARY;
 
     switch (chIndex) {
     case 0:
+        channelSettings.channel_num = 65;
 #ifdef USERPREFS_CHANNEL_0_PSK
         static const uint8_t defaultpsk0[] = USERPREFS_CHANNEL_0_PSK;
         memcpy(channelSettings.psk.bytes, defaultpsk0, sizeof(defaultpsk0));
@@ -161,6 +165,7 @@ void Channels::initDefaultChannel(ChannelIndex chIndex)
 #endif
         break;
     case 1:
+        channelSettings.channel_num = 70;
 #ifdef USERPREFS_CHANNEL_1_PSK
         static const uint8_t defaultpsk1[] = USERPREFS_CHANNEL_1_PSK;
         memcpy(channelSettings.psk.bytes, defaultpsk1, sizeof(defaultpsk1));
@@ -180,6 +185,7 @@ void Channels::initDefaultChannel(ChannelIndex chIndex)
 #endif
         break;
     case 2:
+        channelSettings.channel_num = 75;
 #ifdef USERPREFS_CHANNEL_2_PSK
         static const uint8_t defaultpsk2[] = USERPREFS_CHANNEL_2_PSK;
         memcpy(channelSettings.psk.bytes, defaultpsk2, sizeof(defaultpsk2));
@@ -280,7 +286,9 @@ void Channels::initDefaults()
         initDefaultChannel(i);
     }
 #else
-    initDefaultChannel(0);
+    for (int i = 0; i < 3 && i < channelFile.channels_count; i++) {
+        initDefaultChannel(i);
+    }
 #endif
 }
 
