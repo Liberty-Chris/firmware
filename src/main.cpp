@@ -167,6 +167,7 @@ struct AckHandler {
                     ledForceOn.set(false);
                     delay(50);
                 }
+                delay(5000);
                 screen->endAlert();
             }
         }
