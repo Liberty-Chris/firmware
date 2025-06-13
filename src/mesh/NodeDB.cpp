@@ -415,11 +415,8 @@ void NodeDB::resetRadioConfig(bool is_fresh_install)
         radioGeneration++;
     }
 
-    if (channelFile.channels_count != MAX_NUM_CHANNELS) {
-        LOG_INFO("Set default channel and radio preferences!");
-
-        channels.initDefaults();
-    }
+    LOG_INFO("Set default channel and radio preferences!");
+    channels.initDefaults();
 
     channels.onConfigChanged();
 

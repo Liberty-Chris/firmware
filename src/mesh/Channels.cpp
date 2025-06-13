@@ -132,20 +132,24 @@ void Channels::initDefaultChannel(ChannelIndex chIndex)
     meshtastic_Channel &ch = getByIndex(chIndex);
     meshtastic_ChannelSettings &channelSettings = ch.settings;
 
-    uint8_t defaultpskIndex = 1;
-    channelSettings.psk.bytes[0] = defaultpskIndex;
-    channelSettings.psk.size = 1;
+    memset(&channelSettings.psk, 0, sizeof(channelSettings.psk));
     strncpy(channelSettings.name, "", sizeof(channelSettings.name));
     channelSettings.module_settings.position_precision = 13; // default to sending location on the primary channel
     channelSettings.has_module_settings = true;
     channelSettings.channel_num = 0;
 
     ch.has_settings = true;
-    ch.role = chIndex == 0 ? meshtastic_Channel_Role_PRIMARY : meshtastic_Channel_Role_SECONDARY;
+    if (chIndex == 0) {
+        ch.role = meshtastic_Channel_Role_PRIMARY;
+    } else {
+        ch.role = meshtastic_Channel_Role_DISABLED;
+    }
 
     switch (chIndex) {
     case 0:
         channelSettings.channel_num = 65;
+        memcpy(channelSettings.psk.bytes, secureEventheimPsk, sizeof(secureEventheimPsk));
+        channelSettings.psk.size = sizeof(secureEventheimPsk);
 #ifdef USERPREFS_CHANNEL_0_PSK
         static const uint8_t defaultpsk0[] = USERPREFS_CHANNEL_0_PSK;
         memcpy(channelSettings.psk.bytes, defaultpsk0, sizeof(defaultpsk0));
@@ -166,6 +170,8 @@ void Channels::initDefaultChannel(ChannelIndex chIndex)
         break;
     case 1:
         channelSettings.channel_num = 70;
+        memcpy(channelSettings.psk.bytes, secureEventheimPsk, sizeof(secureEventheimPsk));
+        channelSettings.psk.size = sizeof(secureEventheimPsk);
 #ifdef USERPREFS_CHANNEL_1_PSK
         static const uint8_t defaultpsk1[] = USERPREFS_CHANNEL_1_PSK;
         memcpy(channelSettings.psk.bytes, defaultpsk1, sizeof(defaultpsk1));
@@ -186,6 +192,8 @@ void Channels::initDefaultChannel(ChannelIndex chIndex)
         break;
     case 2:
         channelSettings.channel_num = 75;
+        memcpy(channelSettings.psk.bytes, secureEventheimPsk, sizeof(secureEventheimPsk));
+        channelSettings.psk.size = sizeof(secureEventheimPsk);
 #ifdef USERPREFS_CHANNEL_2_PSK
         static const uint8_t defaultpsk2[] = USERPREFS_CHANNEL_2_PSK;
         memcpy(channelSettings.psk.bytes, defaultpsk2, sizeof(defaultpsk2));
