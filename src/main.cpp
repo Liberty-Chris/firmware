@@ -149,8 +149,6 @@ SPIClass rfidSPI(HSPI);
 static MFRC522 rfid(RC522_SS_PIN, RC522_RST_PIN);
 static String lastRfidUid = "";
 static uint32_t lastRfidTime = 0;
-static float lastAckSnr = 0;
-static int32_t lastAckRssi = 0;
 
 struct AckHandler {
     int onAck(const meshtastic_MeshPacket *mp)
@@ -159,8 +157,6 @@ struct AckHandler {
             String msg;
             for (uint8_t i = 0; i < mp->decoded.payload.size; i++)
                 msg += (char)mp->decoded.payload.bytes[i];
-            lastAckSnr = mp->rx_snr;
-            lastAckRssi = mp->rx_rssi;
             String prefix = String(owner.short_name) + ":";
             if (msg.startsWith(prefix)) {
                 if (screen)
@@ -1466,16 +1462,14 @@ void loop()
                     delay(50);
                 }
 
-                float battV = powerStatus->getBatteryVoltageMv() / 1000.0f;
-                int battP = powerStatus->getBatteryChargePercent();
-                String msg = String(owner.short_name) + ":" + uid + ":" + String(battV, 2) + ":" + String(battP) + ":" +
-                              String(lastAckSnr, 1) + ":" + String(lastAckRssi);
+                String msg = String(owner.short_name) + ":" + uid + ":" + String(time(nullptr));
 
                 meshtastic_MeshPacket *p = router->allocForSending();
                 p->decoded.portnum = meshtastic_PortNum_TEXT_MESSAGE_APP;
                 p->decoded.payload.size = msg.length();
                 memcpy(p->decoded.payload.bytes, msg.c_str(), msg.length());
                 service->sendToMesh(p, RX_SRC_LOCAL, true);
+                delay(5000);
                 screen->endAlert();
             }
             rfid.PICC_HaltA();
