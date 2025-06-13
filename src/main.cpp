@@ -772,7 +772,12 @@ void setup()
 
 #ifdef LED_PIN
     pinMode(LED_PIN, OUTPUT);
+#ifdef HELTEC_V3
+    // Leave LED off on Heltec V3 to avoid constant illumination
+    digitalWrite(LED_PIN, HIGH ^ LED_STATE_ON);
+#else
     digitalWrite(LED_PIN, LED_STATE_ON); // turn on for now
+#endif
 #endif
 
     // Hello
