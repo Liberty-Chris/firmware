@@ -440,15 +440,13 @@ static void drawCriticalFaultFrame(OLEDDisplay *display, OLEDDisplayUiState *sta
     display->drawString(0 + x, FONT_HEIGHT_MEDIUM + y, "For help, please visit \nmeshtastic.org");
 }
 
-// Ignore messages originating from phone (from the current node 0x0) unless range test or store and forward module are enabled
+// Decide if an incoming text message should be rendered on the screen.
+// Previously messages from a connected phone (node 0x0) were hidden unless the
+// Range Test or Store-and-Forward modules were enabled.  The display now always
+// shows text messages regardless of their origin.
 static bool shouldDrawMessage(const meshtastic_MeshPacket *packet)
 {
-    // Ignore messages originating from a phone unless Range Test or
-    // Store-and-Forward modules are enabled.
-    if (packet->from == 0 && !moduleConfig.range_test.enabled &&
-        !moduleConfig.store_forward.enabled) {
-        return false;
-    }
+    (void)packet; // parameter unused
     return true;
 }
 
@@ -2200,7 +2198,8 @@ void Screen::setFrames(FrameFocus focus)
     normalFrames[numframes++] = screen->digitalWatchFace ? &Screen::drawDigitalClockFrame : &Screen::drawAnalogClockFrame;
 #endif
 
-    // If we have a text message - show it next, unless it's a phone message and we aren't using any special modules
+    // If we have a text message - show it next. Phone-originated messages are
+    // displayed like any others and are no longer suppressed.
     if (devicestate.has_rx_text_message && shouldDrawMessage(&devicestate.rx_text_message)) {
         fsi.positions.textMessage = numframes;
         normalFrames[numframes++] = drawTextMessageFrame;
@@ -2815,13 +2814,10 @@ int Screen::handleStatusUpdate(const meshtastic::Status *arg)
 int Screen::handleTextMessage(const meshtastic_MeshPacket *packet)
 {
     if (showingNormalScreen) {
-        // Outgoing message
-        if (packet->from == 0)
-            setFrames(FOCUS_PRESERVE); // Return to same frame (quietly hiding the rx text message frame)
-
-        // Incoming message
-        else
-            setFrames(FOCUS_TEXTMESSAGE); // Focus on the new message
+        // Always focus on the text message when we are on the normal screen.
+        // Phone-originated messages were previously ignored, but they are now
+        // displayed like any other incoming or outgoing message.
+        setFrames(FOCUS_TEXTMESSAGE);
     }
 
     return 0;
