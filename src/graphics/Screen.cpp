@@ -214,19 +214,19 @@ static void drawBitmapScreen(const char *upperMsg, OLEDDisplay *display, OLEDDis
 static void drawDripdropzLogo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
 {
     const char *region = myRegion ? myRegion->name : NULL;
-    drawBitmapScreen(region, display, state, x, y, DRIPDROPZ_LOGO_WIDTH, DRIPDROPZ_LOGO_HEIGHT, dripdropz_logo);
+    drawBitmapScreen(region, display, state, x, y, DRIPDROPZ_LOGO_WIDTH, DRIPDROPZ_LOGO_HEIGHT, dripdropz_icon_128x28_bits);
 }
 
 static void drawIogLogo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
 {
     const char *region = myRegion ? myRegion->name : NULL;
-    drawBitmapScreen(region, display, state, x, y, IOG_LOGO_WIDTH, IOG_LOGO_HEIGHT, iog_logo);
+    drawBitmapScreen(region, display, state, x, y, IOG_LOGO_WIDTH, IOG_LOGO_HEIGHT, iog_icon_128x28_bits);
 }
 
 static void drawHydraLogo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
 {
     const char *region = myRegion ? myRegion->name : NULL;
-    drawBitmapScreen(region, display, state, x, y, HYDRA_LOGO_WIDTH, HYDRA_LOGO_HEIGHT, hydra_logo);
+    drawBitmapScreen(region, display, state, x, y, HYDRA_LOGO_WIDTH, HYDRA_LOGO_HEIGHT, hydra_icon_128x28_bits);
 }
 
 static FrameCallback bootFrames[BOOT_FRAME_COUNT] = {drawDripdropzLogo, drawIogLogo, drawHydraLogo};
