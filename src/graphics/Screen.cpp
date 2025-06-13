@@ -84,6 +84,9 @@ FrameCallback *normalFrames;
 static uint32_t targetFramerate = IDLE_FRAMERATE;
 
 uint32_t logo_timeout = 5000; // 4 seconds for EACH logo
+static const uint8_t BOOT_FRAME_COUNT = 3;
+static bool alertActive = false;
+static uint32_t alertSinceMs = 0;
 
 uint32_t hours_in_month = 730;
 
@@ -120,6 +123,7 @@ static bool heartbeat = false;
 #define SCREEN_HEIGHT display->getHeight()
 
 #include "graphics/ScreenFonts.h"
+#include "img/logos.h"
 #include <Throttle.h>
 
 #define getStringCenteredX(s) ((SCREEN_WIDTH - display->getStringWidth(s)) / 2)
@@ -181,6 +185,51 @@ static void drawIconScreen(const char *upperMsg, OLEDDisplay *display, OLEDDispl
 
     display->setTextAlignment(TEXT_ALIGN_LEFT); // Restore left align, just to be kind to any other unsuspecting code
 }
+
+static void drawBitmapScreen(const char *upperMsg, OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y,
+                             uint16_t width, uint16_t height, const uint8_t *bits)
+{
+    display->drawXbm(x + (SCREEN_WIDTH - width) / 2,
+                     y + (SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM - height) / 2 + 2, width, height, bits);
+
+    display->setFont(FONT_MEDIUM);
+    display->setTextAlignment(TEXT_ALIGN_LEFT);
+    const char *title = "meshtastic.org";
+    display->drawString(x + getStringCenteredX(title), y + SCREEN_HEIGHT - FONT_HEIGHT_MEDIUM, title);
+    display->setFont(FONT_SMALL);
+
+    if (upperMsg)
+        display->drawString(x + 0, y + 0, upperMsg);
+
+    char buf[25];
+    snprintf(buf, sizeof(buf), "%s\n%s", xstr(APP_VERSION_SHORT), haveGlyphs(owner.short_name) ? owner.short_name : "");
+
+    display->setTextAlignment(TEXT_ALIGN_RIGHT);
+    display->drawString(x + SCREEN_WIDTH, y + 0, buf);
+    screen->forceDisplay();
+
+    display->setTextAlignment(TEXT_ALIGN_LEFT);
+}
+
+static void drawDripdropzLogo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
+{
+    const char *region = myRegion ? myRegion->name : NULL;
+    drawBitmapScreen(region, display, state, x, y, DRIPDROPZ_LOGO_WIDTH, DRIPDROPZ_LOGO_HEIGHT, dripdropz_logo);
+}
+
+static void drawIogLogo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
+{
+    const char *region = myRegion ? myRegion->name : NULL;
+    drawBitmapScreen(region, display, state, x, y, IOG_LOGO_WIDTH, IOG_LOGO_HEIGHT, iog_logo);
+}
+
+static void drawHydraLogo(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y)
+{
+    const char *region = myRegion ? myRegion->name : NULL;
+    drawBitmapScreen(region, display, state, x, y, HYDRA_LOGO_WIDTH, HYDRA_LOGO_HEIGHT, hydra_logo);
+}
+
+static FrameCallback bootFrames[BOOT_FRAME_COUNT] = {drawDripdropzLogo, drawIogLogo, drawHydraLogo};
 
 #ifdef USERPREFS_OEM_TEXT
 
@@ -1729,26 +1778,13 @@ void Screen::setup()
     logo_timeout *= 2; // Double the time if we have a custom logo
 #endif
 
-    // Add frames.
+    // Boot logo frames
     EINK_ADD_FRAMEFLAG(dispdev, DEMAND_FAST);
-    alertFrames[0] = [this](OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y) -> void {
-#ifdef ARCH_ESP32
-        if (wakeCause == ESP_SLEEP_WAKEUP_TIMER || wakeCause == ESP_SLEEP_WAKEUP_EXT1) {
-            drawFrameText(display, state, x, y, "Resuming...");
-        } else
-#endif
-        {
-            // Draw region in upper left
-            const char *region = myRegion ? myRegion->name : NULL;
-            drawIconScreen(region, display, state, x, y);
-        }
-    };
-    ui->setFrames(alertFrames, 1);
+    ui->setFrames(bootFrames, BOOT_FRAME_COUNT);
+    ui->setTimePerFrame(logo_timeout);
+    ui->enableAutoTransition();
     // No overlays.
     ui->setOverlays(nullptr, 0);
-
-    // Require presses to switch between frames.
-    ui->disableAutoTransition();
 
     // Set up a log buffer with 3 lines, 32 chars each.
     dispdev->setLogBuffer(3, 32);
@@ -1870,9 +1906,10 @@ int32_t Screen::runOnce()
     // Show boot screen for first logo_timeout seconds, then switch to normal operation.
     // serialSinceMsec adjusts for additional serial wait time during nRF52 bootup
     static bool showingBootScreen = true;
-    if (showingBootScreen && (millis() > (logo_timeout + serialSinceMsec))) {
+    if (showingBootScreen && (millis() > (logo_timeout * BOOT_FRAME_COUNT + serialSinceMsec))) {
         LOG_INFO("Done with boot screen");
         stopBootScreen();
+        ui->disableAutoTransition();
         showingBootScreen = false;
     }
 
@@ -1921,7 +1958,6 @@ int32_t Screen::runOnce()
             handleShowNextFrame();
             break;
         case Cmd::START_ALERT_FRAME: {
-            showingBootScreen = false; // this should avoid the edge case where an alert triggers before the boot screen goes away
             showingNormalScreen = false;
             alertFrames[0] = alertFrame;
 #ifdef USE_EINK
@@ -1929,6 +1965,9 @@ int32_t Screen::runOnce()
             EINK_ADD_FRAMEFLAG(dispdev, BLOCKING);    // Edge case: if this frame is promoted to COSMETIC, wait for update
             handleSetOn(true); // Ensure power-on to receive deep-sleep screensaver (PowerFSM should handle?)
 #endif
+            ui->disableAutoTransition();
+            alertSinceMs = millis();
+            alertActive = true;
             setFrameImmediateDraw(alertFrames);
             break;
         }
@@ -1936,8 +1975,19 @@ int32_t Screen::runOnce()
             handleStartFirmwareUpdateScreen();
             break;
         case Cmd::STOP_ALERT_FRAME:
+            EINK_ADD_FRAMEFLAG(dispdev, COSMETIC); // E-Ink: Explicitly use full-refresh for next frame
+            alertActive = false;
+            if (showingBootScreen) {
+                ui->setFrames(bootFrames, BOOT_FRAME_COUNT);
+                ui->setTimePerFrame(logo_timeout);
+                ui->enableAutoTransition();
+            } else {
+                setFrames();
+            }
+            break;
         case Cmd::STOP_BOOT_SCREEN:
             EINK_ADD_FRAMEFLAG(dispdev, COSMETIC); // E-Ink: Explicitly use full-refresh for next frame
+            ui->disableAutoTransition();
             setFrames();
             break;
         case Cmd::PRINT:
@@ -1947,6 +1997,10 @@ int32_t Screen::runOnce()
         default:
             LOG_ERROR("Invalid screen cmd");
         }
+    }
+
+    if (alertActive && millis() > alertSinceMs + logo_timeout) {
+        endAlert();
     }
 
     if (!screenOn) { // If we didn't just wake and the screen is still off, then
