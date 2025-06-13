@@ -40,11 +40,6 @@
 #include <utility>
 #ifdef HELTEC_V3
 #include <MFRC522.h>
-#define RC522_SCK 25
-#define RC522_MOSI 32
-#define RC522_MISO 33
-#define RC522_SS 26
-#define RC522_RST 27
 #endif
 
 #ifdef ARCH_ESP32
@@ -151,7 +146,7 @@ SPIClass SPI1(HSPI);
 #endif
 #ifdef HELTEC_V3
 SPIClass rfidSPI(HSPI);
-static MFRC522 rfid(RC522_SS, RC522_RST);
+static MFRC522 rfid(RC522_SS_PIN, RC522_RST_PIN);
 static String lastRfidUid = "";
 static uint32_t lastRfidTime = 0;
 static float lastAckSnr = 0;
@@ -899,7 +894,7 @@ void setup()
     SPI.setFrequency(4000000);
 #endif
 #ifdef HELTEC_V3
-    rfidSPI.begin(RC522_SCK, RC522_MISO, RC522_MOSI, RC522_SS);
+    rfidSPI.begin(RC522_SCK_PIN, RC522_MISO_PIN, RC522_MOSI_PIN, RC522_SS_PIN);
     rfid.PCD_Init();
 #endif
 #endif

@@ -40,3 +40,20 @@
 
 #define SX126X_DIO2_AS_RF_SWITCH
 #define SX126X_DIO3_TCXO_VOLTAGE 1.8
+
+// MFRC522 RFID reader pins
+#ifndef RC522_SCK_PIN
+#define RC522_SCK_PIN 25
+#endif
+#ifndef RC522_MOSI_PIN
+#define RC522_MOSI_PIN 32
+#endif
+#ifndef RC522_MISO_PIN
+#define RC522_MISO_PIN 33
+#endif
+#ifndef RC522_SS_PIN
+#define RC522_SS_PIN 26
+#endif
+#ifndef RC522_RST_PIN
+#define RC522_RST_PIN 27
+#endif
