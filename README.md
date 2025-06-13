@@ -42,6 +42,19 @@ ensure an SPI instance with that name is defined in your project. An
 `extern` declaration for this object now lives in `MFRC522.h`, so only the
 definition (e.g. `SPIClass rfidSPI(HSPI);`) is required.
 
+To override the MFRC522 pin assignments on the Heltec V3 variant, define
+`RC522_*_PIN` macros in your `platformio.ini`. For example:
+
+```
+[env:heltec-v3]
+build_flags =
+  -DRC522_SCK_PIN=5
+  -DRC522_MOSI_PIN=18
+  -DRC522_MISO_PIN=19
+  -DRC522_SS_PIN=21
+  -DRC522_RST_PIN=22
+```
+
 ## Stats
 
 ![Alt](https://repobeats.axiom.co/api/embed/8025e56c482ec63541593cc5bd322c19d5c0bdcf.svg "Repobeats analytics image")
