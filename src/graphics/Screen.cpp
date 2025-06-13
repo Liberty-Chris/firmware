@@ -1902,12 +1902,18 @@ int32_t Screen::runOnce()
     // Show boot screen for first logo_timeout seconds, then switch to normal operation.
     // serialSinceMsec adjusts for additional serial wait time during nRF52 bootup
     static bool showingBootScreen = true;
-    if (showingBootScreen && (millis() > (logo_timeout * BOOT_FRAME_COUNT + serialSinceMsec))) {
-        LOG_INFO("Done with boot screen");
-        stopBootScreen();
-        ui->disableAutoTransition();
-        showingBootScreen = false;
-    }
+    /*
+     * Originally the boot screen stopped after a timeout and the normal frame
+     * set was loaded here.  For systems that continuously rotate the boot
+     * logos, this automatic transition is no longer desired, so the block that
+     * called stopBootScreen() and disabled auto transition has been removed.
+     */
+    // if (showingBootScreen && (millis() > (logo_timeout * BOOT_FRAME_COUNT + serialSinceMsec))) {
+    //     LOG_INFO("Done with boot screen");
+    //     stopBootScreen();
+    //     ui->disableAutoTransition();
+    //     showingBootScreen = false;
+    // }
 
 #ifdef USERPREFS_OEM_TEXT
     static bool showingOEMBootScreen = true;
@@ -1973,13 +1979,10 @@ int32_t Screen::runOnce()
         case Cmd::STOP_ALERT_FRAME:
             EINK_ADD_FRAMEFLAG(dispdev, COSMETIC); // E-Ink: Explicitly use full-refresh for next frame
             alertActive = false;
-            if (showingBootScreen) {
-                ui->setFrames(bootFrames, BOOT_FRAME_COUNT);
-                ui->setTimePerFrame(logo_timeout);
-                ui->enableAutoTransition();
-            } else {
-                setFrames();
-            }
+            // After an alert, always return to the rotating boot logos
+            ui->setFrames(bootFrames, BOOT_FRAME_COUNT);
+            ui->setTimePerFrame(logo_timeout);
+            ui->enableAutoTransition();
             break;
         case Cmd::STOP_BOOT_SCREEN:
             EINK_ADD_FRAMEFLAG(dispdev, COSMETIC); // E-Ink: Explicitly use full-refresh for next frame
