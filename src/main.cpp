@@ -1479,10 +1479,7 @@ void loop()
                                             OLEDDisplayUiState *state,
                                             int16_t x, int16_t y) -> void {
                     display->setTextAlignment(TEXT_ALIGN_CENTER);
-                    if (display->height() <= 64)
-                        display->setFont(FONT_SMALL);
-                    else
-                        display->setFont(FONT_MEDIUM);
+                    display->setFont(FONT_MEDIUM);
                     int16_t xOffset = display->getWidth() / 2;
                     display->drawStringMaxWidth(x + xOffset, 26 + y,
                                                 display->getWidth(),
