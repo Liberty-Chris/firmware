@@ -1464,8 +1464,13 @@ void loop()
             ackLastUpdate = now;
             analogWrite(LED_PIN, ackBrightness);
             ackBrightness += ackDirection;
-            if (ackBrightness <= 0 || ackBrightness >= 255)
+            if (ackBrightness >= 255) {
+                ackBrightness = 255;
                 ackDirection = -ackDirection;
+            } else if (ackBrightness <= 0) {
+                ackBrightness = 0;
+                ackDirection = -ackDirection;
+            }
         }
         if (ackMsgPending && now - ackWaitStart >= 3000) {
             waitingForAck = false;
