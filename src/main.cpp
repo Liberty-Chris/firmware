@@ -136,6 +136,8 @@ UdpMulticastHandler *udpHandler = nullptr;
 float tcxoVoltage = SX126X_DIO3_TCXO_VOLTAGE; // if TCXO is optional, put this here so it can be changed further down.
 #endif
 
+extern uint32_t logo_timeout;
+
 #ifdef MESHTASTIC_INCLUDE_NICHE_GRAPHICS
 void setupNicheGraphics();
 #include "nicheGraphics.h"
@@ -156,6 +158,7 @@ static int ackBrightness = 0;
 static int ackDirection = 5;
 static uint32_t ackLastUpdate = 0;
 static bool ackAlertDisplayed = false;
+static uint32_t ackAlertLastShown = 0;
 static uint32_t ackWaitStart = 0;
 static bool ackMsgPending = false;
 static String ackMessage = "";
@@ -1456,9 +1459,10 @@ void loop()
 #ifdef HELTEC_V3
     if (waitingForAck) {
         uint32_t now = millis();
-        if (!ackAlertDisplayed && screen && ackAlert) {
+        if (screen && ackAlert && now - ackAlertLastShown >= logo_timeout) {
             screen->startAlert(ackAlert);
             ackAlertDisplayed = true;
+            ackAlertLastShown = now;
         }
         if (now - ackLastUpdate >= 20) {
             ackLastUpdate = now;
@@ -1476,6 +1480,7 @@ void loop()
             waitingForAck = false;
             ackAlert = nullptr;
             ackAlertDisplayed = false;
+            ackAlertLastShown = 0;
             ackLastUpdate = 0;
             analogWrite(LED_PIN, 0);
             if (screen) {
@@ -1531,6 +1536,7 @@ void loop()
                 size_t msgCount = sizeof(waitingMessages) / sizeof(waitingMessages[0]);
                 ackAlert = waitingMessages[random(0, msgCount)];
                 ackAlertDisplayed = false;
+                ackAlertLastShown = 0;
                 ackBrightness = 0;
                 ackDirection = 5;
                 ackLastUpdate = millis();
