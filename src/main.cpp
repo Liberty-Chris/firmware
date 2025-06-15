@@ -151,6 +151,11 @@ static String lastRfidUid = "";
 static uint32_t lastRfidTime = 0;
 static const char *const waitingMessages[] = {"Doing stuff...", "Meshing things...", "Calculating routes...", "Wiggling electrons..."};
 volatile bool waitingForAck = false;
+static const char *ackAlert = nullptr;
+static int ackBrightness = 0;
+static int ackDirection = 5;
+static uint32_t ackLastUpdate = 0;
+static bool ackAlertDisplayed = false;
 
 struct AckHandler {
     int onAck(const meshtastic_MeshPacket *mp)
@@ -164,6 +169,10 @@ struct AckHandler {
                 // Strip the prefix so only the message body is displayed
                 msg = msg.substring(prefix.length());
                 waitingForAck = false;
+                ackAlert = nullptr;
+                ackAlertDisplayed = false;
+                ackLastUpdate = 0;
+                analogWrite(LED_PIN, 0);
                 if (screen) {
                     // Capture a copy of the trimmed message so that the alert frame can
                     // safely use it once the handler returns.
@@ -1467,6 +1476,20 @@ void loop()
 
     service->loop();
 #ifdef HELTEC_V3
+    if (waitingForAck) {
+        uint32_t now = millis();
+        if (!ackAlertDisplayed && screen && ackAlert) {
+            screen->startAlert(ackAlert);
+            ackAlertDisplayed = true;
+        }
+        if (now - ackLastUpdate >= 20) {
+            ackLastUpdate = now;
+            analogWrite(LED_PIN, ackBrightness);
+            ackBrightness += ackDirection;
+            if (ackBrightness <= 0 || ackBrightness >= 255)
+                ackDirection = -ackDirection;
+        }
+    }
     if (millis() - lastRfidTime > 500) {
         lastRfidTime = millis();
         if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
@@ -1494,20 +1517,12 @@ void loop()
                 memcpy(p->decoded.payload.bytes, msg.c_str(), msg.length());
                 service->sendToMesh(p, RX_SRC_LOCAL, true);
                 waitingForAck = true;
-                if (screen) {
-                    size_t msgCount = sizeof(waitingMessages) / sizeof(waitingMessages[0]);
-                    const char *alert = waitingMessages[random(0, msgCount)];
-                    screen->startAlert(alert);
-                }
-                int brightness = 0;
-                int delta = 5;
-                while (waitingForAck) {
-                    analogWrite(LED_PIN, brightness);
-                    delay(20);
-                    brightness += delta;
-                    if (brightness <= 0 || brightness >= 255)
-                        delta = -delta;
-                }
+                size_t msgCount = sizeof(waitingMessages) / sizeof(waitingMessages[0]);
+                ackAlert = waitingMessages[random(0, msgCount)];
+                ackAlertDisplayed = false;
+                ackBrightness = 0;
+                ackDirection = 5;
+                ackLastUpdate = millis();
             }
             rfid.PICC_HaltA();
             rfid.PCD_StopCrypto1();
