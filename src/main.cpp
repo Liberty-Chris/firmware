@@ -1476,7 +1476,7 @@ void loop()
                 ackDirection = -ackDirection;
             }
         }
-        if (ackMsgPending && now - ackWaitStart >= 3000) {
+        if (ackMsgPending && now - ackWaitStart >= 5000) {
             waitingForAck = false;
             ackAlert = nullptr;
             ackAlertDisplayed = false;
