@@ -131,6 +131,8 @@ class Point
 namespace graphics
 {
 
+extern uint32_t logo_timeout;
+
 // Forward declarations
 class Screen;
 
