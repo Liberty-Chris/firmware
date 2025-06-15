@@ -149,6 +149,8 @@ SPIClass rfidSPI(HSPI);
 static MFRC522 rfid(RC522_SS_PIN, RC522_RST_PIN);
 static String lastRfidUid = "";
 static uint32_t lastRfidTime = 0;
+static const char *const waitingMessages[] = {"Doing stuff...", "Meshing things...", "Calculating routes...", "Wiggling electrons..."};
+volatile bool waitingForAck = false;
 
 struct AckHandler {
     int onAck(const meshtastic_MeshPacket *mp)
@@ -161,6 +163,7 @@ struct AckHandler {
             if (msg.startsWith(prefix)) {
                 // Strip the prefix so only the message body is displayed
                 msg = msg.substring(prefix.length());
+                waitingForAck = false;
                 if (screen) {
                     // Capture a copy of the trimmed message so that the alert frame can
                     // safely use it once the handler returns.
@@ -1490,8 +1493,21 @@ void loop()
                 p->decoded.payload.size = msg.length();
                 memcpy(p->decoded.payload.bytes, msg.c_str(), msg.length());
                 service->sendToMesh(p, RX_SRC_LOCAL, true);
-                delay(5000);
-                screen->endAlert();
+                waitingForAck = true;
+                if (screen) {
+                    size_t msgCount = sizeof(waitingMessages) / sizeof(waitingMessages[0]);
+                    const char *alert = waitingMessages[random(0, msgCount)];
+                    screen->startAlert(alert);
+                }
+                int brightness = 0;
+                int delta = 5;
+                while (waitingForAck) {
+                    analogWrite(LED_PIN, brightness);
+                    delay(20);
+                    brightness += delta;
+                    if (brightness <= 0 || brightness >= 255)
+                        delta = -delta;
+                }
             }
             rfid.PICC_HaltA();
             rfid.PCD_StopCrypto1();
