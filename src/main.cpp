@@ -156,6 +156,9 @@ static int ackBrightness = 0;
 static int ackDirection = 5;
 static uint32_t ackLastUpdate = 0;
 static bool ackAlertDisplayed = false;
+static uint32_t ackWaitStart = 0;
+static bool ackMsgPending = false;
+static String ackMessage = "";
 
 struct AckHandler {
     int onAck(const meshtastic_MeshPacket *mp)
@@ -168,36 +171,10 @@ struct AckHandler {
             if (msg.startsWith(prefix)) {
                 // Strip the prefix so only the message body is displayed
                 msg = msg.substring(prefix.length());
-                waitingForAck = false;
-                ackAlert = nullptr;
-                ackAlertDisplayed = false;
-                ackLastUpdate = 0;
-                analogWrite(LED_PIN, 0);
-                if (screen) {
-                    // Capture a copy of the trimmed message so that the alert frame can
-                    // safely use it once the handler returns.
-                    String msgCopy = msg;
-                    screen->startAlert([msgCopy](OLEDDisplay *display,
-                                                OLEDDisplayUiState *state,
-                                                int16_t x, int16_t y) -> void {
-                        display->setTextAlignment(TEXT_ALIGN_CENTER);
-                        if (display->height() <= 64)
-                            display->setFont(FONT_SMALL);
-                        else
-                            display->setFont(FONT_MEDIUM);
-                        int16_t xOffset = display->getWidth() / 2;
-                        display->drawStringMaxWidth(x + xOffset, 26 + y,
-                                                    display->getWidth(),
-                                                    msgCopy.c_str());
-                    });
-                }
-                for (int i = 0; i < 5; i++) {
-                    ledForceOn.set(true);
-                    delay(50);
-                    ledForceOn.set(false);
-                    delay(50);
-                }
-                // Alerts automatically dismiss after `logo_timeout` in Screen.cpp
+                // Store the message so it can be displayed after the minimum
+                // wait period has elapsed.
+                ackMessage = msg;
+                ackMsgPending = true;
             }
         }
         return 0;
@@ -1490,6 +1467,37 @@ void loop()
             if (ackBrightness <= 0 || ackBrightness >= 255)
                 ackDirection = -ackDirection;
         }
+        if (ackMsgPending && now - ackWaitStart >= 3000) {
+            waitingForAck = false;
+            ackAlert = nullptr;
+            ackAlertDisplayed = false;
+            ackLastUpdate = 0;
+            analogWrite(LED_PIN, 0);
+            if (screen) {
+                String msgCopy = ackMessage;
+                screen->startAlert([msgCopy](OLEDDisplay *display,
+                                            OLEDDisplayUiState *state,
+                                            int16_t x, int16_t y) -> void {
+                    display->setTextAlignment(TEXT_ALIGN_CENTER);
+                    if (display->height() <= 64)
+                        display->setFont(FONT_SMALL);
+                    else
+                        display->setFont(FONT_MEDIUM);
+                    int16_t xOffset = display->getWidth() / 2;
+                    display->drawStringMaxWidth(x + xOffset, 26 + y,
+                                                display->getWidth(),
+                                                msgCopy.c_str());
+                });
+            }
+            for (int i = 0; i < 5; i++) {
+                ledForceOn.set(true);
+                delay(50);
+                ledForceOn.set(false);
+                delay(50);
+            }
+            ackMsgPending = false;
+            ackMessage = "";
+        }
     }
     if (millis() - lastRfidTime > 500) {
         lastRfidTime = millis();
@@ -1524,6 +1532,9 @@ void loop()
                 ackBrightness = 0;
                 ackDirection = 5;
                 ackLastUpdate = millis();
+                ackWaitStart = ackLastUpdate;
+                ackMsgPending = false;
+                ackMessage = "";
             }
             rfid.PICC_HaltA();
             rfid.PCD_StopCrypto1();
