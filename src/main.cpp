@@ -159,18 +159,23 @@ struct AckHandler {
                 msg += (char)mp->decoded.payload.bytes[i];
             String prefix = String(owner.short_name) + ":";
             if (msg.startsWith(prefix)) {
+                // Strip the prefix so only the message body is displayed
+                msg = msg.substring(prefix.length());
                 if (screen) {
-                    // Capture a copy of the message so that the alert frame can
+                    // Capture a copy of the trimmed message so that the alert frame can
                     // safely use it once the handler returns.
                     String msgCopy = msg;
                     screen->startAlert([msgCopy](OLEDDisplay *display,
                                                 OLEDDisplayUiState *state,
                                                 int16_t x, int16_t y) -> void {
-                        uint16_t x_offset = display->width() / 2;
-                        display->setTextAlignment(TEXT_ALIGN_CENTER);
-                        display->setFont(FONT_MEDIUM);
-                        display->drawString(x_offset + x, 26 + y,
-                                           msgCopy.c_str());
+                        display->setTextAlignment(TEXT_ALIGN_LEFT);
+                        if (display->height() <= 64)
+                            display->setFont(FONT_SMALL);
+                        else
+                            display->setFont(FONT_MEDIUM);
+                        display->drawStringMaxWidth(0 + x, 26 + y,
+                                                    x + display->getWidth(),
+                                                    msgCopy.c_str());
                     });
                 }
                 for (int i = 0; i < 5; i++) {
