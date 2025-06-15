@@ -160,6 +160,8 @@ static uint32_t ackLastUpdate = 0;
 static bool ackAlertDisplayed = false;
 static uint32_t ackAlertLastShown = 0;
 static uint32_t ackWaitStart = 0;
+static bool ackFadeActive = false;
+static uint32_t ackFadeStart = 0;
 static bool ackMsgPending = false;
 static String ackMessage = "";
 
@@ -1502,8 +1504,30 @@ void loop()
                 ledForceOn.set(false);
                 delay(50);
             }
+            ackFadeActive = true;
+            ackBrightness = 0;
+            ackDirection = 10;
+            ackFadeStart = millis();
             ackMsgPending = false;
             ackMessage = "";
+        }
+    } else if (ackFadeActive) {
+        uint32_t now = millis();
+        if (now - ackLastUpdate >= 20) {
+            ackLastUpdate = now;
+            analogWrite(LED_PIN, ackBrightness);
+            ackBrightness += ackDirection;
+            if (ackBrightness >= 255) {
+                ackBrightness = 255;
+                ackDirection = -ackDirection;
+            } else if (ackBrightness <= 0) {
+                ackBrightness = 0;
+                ackDirection = -ackDirection;
+            }
+        }
+        if (now - ackFadeStart >= 5000) {
+            ackFadeActive = false;
+            analogWrite(LED_PIN, 0);
         }
     }
     if (millis() - lastRfidTime > 500) {
